@@ -61,6 +61,13 @@
     "__locale": "c",
     "ios": "c",
     "utilities.h": "c",
-    "stdio.h": "c"
+    "stdio.h": "c",
+    "messages.h": "c",
+    "client.h": "c",
+    "room.h": "c",
+    "util.h": "c",
+    "server.h": "c",
+    "string.h": "c",
+    "clocale": "c"
   }
 }

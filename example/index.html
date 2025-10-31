@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC Client Example</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .log { background: #f5f5f5; padding: 10px; height: 200px; overflow-y: scroll; }
+        button { margin: 5px; padding: 8px 15px; }
+        input, textarea { width: 100%; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebRTC Signaling Client Test</h1>
+        
+        <div class="section">
+            <h3>Connection</h3>
+            <input type="text" id="serverUrl" value="ws://localhost:8080" placeholder="WebSocket URL">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <div>Status: <span id="status">Disconnected</span></div>
+        </div>
+
+        <div class="section">
+            <h3>Room Management</h3>
+            <input type="text" id="roomName" value="Test Room" placeholder="Room Name">
+            <input type="text" id="roomId" placeholder="Room ID (leave empty to create new)">
+            <button onclick="joinRoom()">Join Room</button>
+            <button onclick="leaveRoom()">Leave Room</button>
+        </div>
+
+        <div class="section">
+            <h3>Participants</h3>
+            <div id="participants"></div>
+        </div>
+
+        <div class="section">
+            <h3>WebRTC Test</h3>
+            <input type="text" id="targetClient" placeholder="Target Client ID">
+            <button onclick="createOffer()">Create Offer</button>
+            <button onclick="sendTestMessage()">Send Test Message</button>
+        </div>
+
+        <div class="section">
+            <h3>Log</h3>
+            <div id="log" class="log"></div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let clientId = null;
+        let currentRoom = null;
+        let participants = [];
+
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function connect() {
+            const url = document.getElementById('serverUrl').value;
+            ws = new WebSocket(url, 'webrtc-signaling');
+            
+            ws.onopen = () => {
+                document.getElementById('status').textContent = 'Connected';
+                log('Connected to server');
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('status').textContent = 'Disconnected';
+                log('Disconnected from server');
+            };
+            
+            ws.onerror = (error) => {
+                log('WebSocket error: ' + error);
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                handleMessage(message);
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function handleMessage(message) {
+            log(`Received: ${message.event}`);
+            
+            switch (message.event) {
+                case 'client-id':
+                    clientId = message.data.clientId;
+                    log(`My client ID: ${clientId}`);
+                    break;
+                    
+                case 'room-created':
+                    currentRoom = message.data.roomId;
+                    log(`Room created: ${currentRoom}`);
+                    break;
+                    
+                case 'participants':
+                    participants = message.data.participants;
+                    updateParticipantsList();
+                    break;
+                    
+                case 'offer':
+                    log(`Offer from ${message.data.fromClientId}`);
+                    handleOffer(message.data);
+                    break;
+                    
+                case 'answer':
+                    log(`Answer from ${message.data.fromClientId}`);
+                    handleAnswer(message.data);
+                    break;
+                    
+                case 'ice-candidate':
+                    log(`ICE candidate from ${message.data.fromClientId}`);
+                    handleIceCandidate(message.data);
+                    break;
+                    
+                case 'error':
+                    log(`Error: ${message.data}`);
+                    break;
+            }
+        }
+
+        function joinRoom() {
+            if (!ws) {
+                log('Not connected to server');
+                return;
+            }
+            
+            const roomName = document.getElementById('roomName').value;
+            const roomId = document.getElementById('roomId').value;
+            
+            const message = {
+                event: 'join-room',
+                data: {
+                    roomName: roomName,
+                    roomId: roomId || null
+                }
+            };
+            
+            ws.send(JSON.stringify(message));
+            log('Joining room...');
+        }
+
+        function leaveRoom() {
+            if (!ws || !currentRoom) return;
+            
+            const message = {
+                event: 'leave-room',
+                data: {}
+            };
+            
+            ws.send(JSON.stringify(message));
+            currentRoom = null;
+            participants = [];
+            updateParticipantsList();
+            log('Left room');
+        }
+
+        function updateParticipantsList() {
+            const list = document.getElementById('participants');
+            list.innerHTML = '';
+            
+            participants.forEach(participantId => {
+                const div = document.createElement('div');
+                div.textContent = participantId + (participantId === clientId ? ' (You)' : '');
+                list.appendChild(div);
+            });
+        }
+
+        function createOffer() {
+            const targetClient = document.getElementById('targetClient').value;
+            if (!targetClient) {
+                log('Please enter target client ID');
+                return;
+            }
+            
+            const message = {
+                event: 'offer',
+                data: {
+                    targetClientId: targetClient,
+                    offer: { type: 'offer', sdp: 'test-sdp-' + Date.now() }
+                }
+            };
+            
+            ws.send(JSON.stringify(message));
+            log(`Sent offer to ${targetClient}`);
+        }
+
+        function sendTestMessage() {
+            const targetClient = document.getElementById('targetClient').value;
+            if (!targetClient) {
+                log('Please enter target client ID');
+                return;
+            }
+            
+            const message = {
+                event: 'ice-candidate',
+                data: {
+                    targetClientId: targetClient,
+                    candidate: { candidate: 'test-candidate', sdpMid: '0', sdpMLineIndex: 0 }
+                }
+            };
+            
+            ws.send(JSON.stringify(message));
+            log(`Sent test message to ${targetClient}`);
+        }
+
+        function handleOffer(data) {
+            // In real implementation, you'd create and send an answer
+            log(`Would create answer for offer from ${data.fromClientId}`);
+        }
+
+        function handleAnswer(data) {
+            // In real implementation, you'd set the remote description
+            log(`Would set remote description from ${data.fromClientId}`);
+        }
+
+        function handleIceCandidate(data) {
+            // In real implementation, you'd add the ICE candidate
+            log(`Would add ICE candidate from ${data.fromClientId}`);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

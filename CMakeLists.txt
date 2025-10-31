@@ -22,7 +22,7 @@ include_directories(${JANSSON_INCLUDE_DIRS})
 
 # Source files
 set(SRC_FILES
-    src/main.c
+    redrtc.c
     src/server.c
     src/client.c
     src/room.c
