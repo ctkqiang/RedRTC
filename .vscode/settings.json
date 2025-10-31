@@ -68,6 +68,6 @@
     "util.h": "c",
     "server.h": "c",
     "string.h": "c",
-    "clocale": "c"
+    "locale.h": "c"
   }
 }

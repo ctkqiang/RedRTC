@@ -15,7 +15,8 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <time.h>
-#include <clocale>
+#include <locale.h>
+
 
 #include "./include/server.h"
 #include "./include/utilities.h"
