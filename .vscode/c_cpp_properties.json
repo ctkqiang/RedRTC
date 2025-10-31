@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "macos-clang-arm64",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/homebrew/Cellar/libwebsockets/4.4.1/include",
+                "/opt/homebrew/Cellar/jansson/2.14.1/include",
+                "/usr/local/include",
+                "/usr/local/include/node"
+            ],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "${default}",
+            "cppStandard": "${default}",
+            "intelliSenseMode": "macos-clang-arm64",
+            "compilerArgs": [
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}
