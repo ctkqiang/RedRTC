@@ -59,7 +59,7 @@ sudo yum install libwebsockets-devel jansson-devel openssl-devel gcc make
 
 1. **克隆仓库**
 ```bash
-git clone https://github.com/your-org/redrtc.git
+git clone https://github.com/ctkqiang/redrtc.git
 cd redrtc
 ```
 
@@ -357,7 +357,7 @@ make debug
 ### 从源码构建
 ```bash
 # 克隆仓库
-git clone https://github.com/your-org/redrtc.git
+git clone https://github.com/ctkqiang/redrtc.git
 cd redrtc
 
 # 构建调试版本
