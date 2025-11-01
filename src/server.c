@@ -5,6 +5,7 @@
 #include <pthread.h>
 
 #include "../include/server.h"
+#include "../include/utilities.h"
 
 static server_context_t *global_ctx = NULL;
 

@@ -42,10 +42,14 @@ TARGET = $(BINDIR)/$(PROJECT_NAME)
 BREW_PREFIX = $(shell brew --prefix 2>/dev/null || echo "/usr/local")
 OPENSSL_CFLAGS = -I$(BREW_PREFIX)/opt/openssl/include
 OPENSSL_LIBS = -L$(BREW_PREFIX)/opt/openssl/lib -lssl -lcrypto
+LIBWEBSOCKETS_CFLAGS = -I$(BREW_PREFIX)/opt/libwebsockets/include
+LIBWEBSOCKETS_LIBS = -L$(BREW_PREFIX)/opt/libwebsockets/lib
+JANSSON_CFLAGS = -I$(BREW_PREFIX)/opt/jansson/include
+JANSSON_LIBS = -L$(BREW_PREFIX)/opt/jansson/lib
 
 # Combined flags
-CFLAGS += -I$(INCDIR) $(OPENSSL_CFLAGS)
-LIBS = -lwebsockets -ljansson $(OPENSSL_LIBS) -lm -pthread
+CFLAGS += -I$(INCDIR) $(OPENSSL_CFLAGS) $(LIBWEBSOCKETS_CFLAGS) $(JANSSON_CFLAGS)
+LIBS = $(LIBWEBSOCKETS_LIBS) -lwebsockets $(JANSSON_LIBS) -ljansson $(OPENSSL_LIBS) -lm -pthread
 
 # Colors for output
 RED = \033[0;31m

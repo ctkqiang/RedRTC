@@ -5,6 +5,7 @@
 
 #include <jansson.h>
 #include <libwebsockets.h>
+#include <stdbool.h>
 
 #define EVENT_CLIENT_ID         "client-id"
 #define EVENT_JOIN_ROOM         "join-room"

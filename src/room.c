@@ -41,7 +41,10 @@ void room_init(room_t *room, const char *name, client_t *owner) {
 void room_cleanup(room_t *room) {
     if (!room) return;
     
-    printf("Cleaning up room: %s\n", room->id);
+    /* Only print cleanup message if it's not a mass cleanup */
+    if (room->state == ROOM_STATE_ACTIVE) {
+        printf("Cleaning up room: %s\n", room->id);
+    }
     
     /* Remove all participants from the room */
     for (int i = 0; i < MAX_PARTICIPANTS; i++) {
@@ -222,12 +225,18 @@ int room_registry_init(room_registry_t *reg, size_t max_rooms) {
 void room_registry_cleanup(room_registry_t *reg) {
     if (!reg) return;
     
-    printf("Cleaning up room registry (%zu active rooms)\n", reg->active_rooms);
-    
     /* Clean up all active rooms */
     if (reg->rooms) {
+        /* Mark all rooms as closing first to prevent individual cleanup messages */
         for (size_t i = 0; i < reg->max_rooms; i++) {
             if (reg->rooms[i].state == ROOM_STATE_ACTIVE) {
+                reg->rooms[i].state = ROOM_STATE_CLOSING;
+            }
+        }
+        
+        /* Now clean up all rooms */
+        for (size_t i = 0; i < reg->max_rooms; i++) {
+            if (reg->rooms[i].state == ROOM_STATE_CLOSING) {
                 room_cleanup(&reg->rooms[i]);
             }
         }
@@ -310,14 +319,17 @@ void room_registry_remove_empty_rooms(room_registry_t *reg) {
         if (reg->rooms[i].state == ROOM_STATE_ACTIVE && 
             room_is_empty(&reg->rooms[i])) {
             
+            /* Mark room as closing before cleanup to suppress message */
+            reg->rooms[i].state = ROOM_STATE_CLOSING;
             room_cleanup(&reg->rooms[i]);
             reg->active_rooms--;
             removed_count++;
         }
     }
     
-    if (removed_count > 0) {
-        printf("Removed %zu empty rooms (active: %zu/%zu)\n", 
+    /* Only print summary if rooms were actually removed during normal operation */
+    if (removed_count > 0 && reg->active_rooms < reg->max_rooms) {
+        printf("已清理 %zu 个空房间（当前活跃：%zu/%zu）\n", 
                removed_count, reg->active_rooms, reg->max_rooms);
     }
 }

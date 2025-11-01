@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <locale.h>
+#include <inttypes.h>
 
 
 #include "./include/server.h"
@@ -196,7 +197,7 @@ static void display_runtime_stats(const server_context_t *server) {
     
     /* 每30秒显示一次统计信息 */
     if (now - last_stats_time >= 30) {
-        printf("[统计] 客户端: %zu/%zu, 房间: %zu/%zu, 消息: %lu, 错误: %lu\n",
+        printf("[统计] 客户端: %zu/%zu, 房间: %zu/%zu, 消息: %" PRIu64 ", 错误: %" PRIu64 "\n",
                client_registry_get_active_count(&server->clients),
                server->clients.max_clients,
                room_registry_get_active_count(&server->rooms),
@@ -371,10 +372,10 @@ int main(int argc, char *argv[]) {
         
         if (config.enable_stats) {
             printf("统计信息:\n");
-            printf("  总连接数: %lu\n", server.clients.total_connections);
-            printf("  总创建房间数: %lu\n", server.rooms.total_rooms_created);
-            printf("  总处理消息数: %lu\n", server.total_messages);
-            printf("  总错误数: %lu\n", server.total_errors);
+            printf("  总连接数: %" PRIu64 "\n", server.clients.total_connections);
+            printf("  总创建房间数: %" PRIu64 "\n", server.rooms.total_rooms_created);
+            printf("  总处理消息数: %" PRIu64 "\n", server.total_messages);
+            printf("  总错误数: %" PRIu64 "\n", server.total_errors);
         }
         printf("=================================================\n");
     }

@@ -81,10 +81,10 @@ int webrtc_protocol_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // 处理客户端发送的消息
 // ctx: 服务器上下文指针
 // wsi: WebSocket 连接会话信息
-// message: 接收到的消息字符串
-// len: 消息长度
-void process_client_message(server_context_t *ctx, struct lws *wsi, 
-                           const char *message, size_t len);
+// event: 事件类型
+// data: JSON 格式的消息数据
+void process_client_message(server_context_t *ctx, struct lws *wsi,
+                           const char *event, json_t *data);
 
 // 房间消息处理器
 
