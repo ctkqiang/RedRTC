@@ -1,52 +1,143 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebRTC Client Example</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .container { max-width: 800px; margin: 0 auto; }
         .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
-        .log { background: #f5f5f5; padding: 10px; height: 200px; overflow-y: scroll; }
+        .log { background: #f5f5f5; padding: 10px; height: 200px; overflow-y: scroll; white-space: pre-wrap; font-family: monospace; }
         button { margin: 5px; padding: 8px 15px; }
         input, textarea { width: 100%; margin: 5px 0; }
+        .status { padding: 5px 10px; border-radius: 4px; display: inline-block; }
+        .status-connected { background: #4CAF50; color: white; }
+        .status-disconnected { background: #f44336; color: white; }
+        .status-connecting { background: #ff9800; color: white; }
+        .status-error { background: #f44336; color: white; }
+        .error-message { color: #f44336; margin: 5px 0; }
+        .reconnect-timer { color: #666; margin-left: 10px; }
+        #debug { position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; display: none; }
+        .raw-message { font-family: monospace; background: #f8f8f8; padding: 5px; margin: 5px 0; border-left: 3px solid #2196F3; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>WebRTC Signaling Client Test</h1>
+        <h1>WebRTC 测试页面</h1>
+        
+        <div class="status-section">
+            <div id="connectionStatus" class="status">未连接</div>
+            <div id="roomStatus" class="status">未加入房间</div>
+        </div>
+
+        <div class="control-section">
+            <button onclick="connect()">连接服务器</button>
+            <button onclick="createRoom()" id="createRoomBtn" disabled>创建房间</button>
+            <button onclick="joinRoom()" id="joinRoomBtn" disabled>加入房间</button>
+            <button onclick="leaveRoom()" id="leaveRoomBtn" disabled>离开房间</button>
+        </div>
+
+        <div class="debug-section">
+            <h3>调试信息</h3>
+            <div id="debugLog" class="debug-log"></div>
+        </div>
+
+        <style>
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            .status-section {
+                margin: 20px 0;
+                padding: 10px;
+                background: #f5f5f5;
+                border-radius: 5px;
+            }
+            .status {
+                margin: 5px 0;
+                padding: 5px;
+                border-radius: 3px;
+                background: #fff;
+            }
+            .control-section {
+                margin: 20px 0;
+            }
+            .control-section button {
+                margin: 0 10px 10px 0;
+                padding: 8px 15px;
+                border-radius: 5px;
+                border: 1px solid #ddd;
+                background: #fff;
+                cursor: pointer;
+            }
+            .control-section button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .debug-section {
+                margin-top: 20px;
+                padding: 10px;
+                background: #f8f8f8;
+                border-radius: 5px;
+            }
+            .debug-log {
+                height: 300px;
+                overflow-y: auto;
+                padding: 10px;
+                background: #fff;
+                border: 1px solid #ddd;
+                border-radius: 3px;
+                font-family: monospace;
+                white-space: pre-wrap;
+            }
+        </style>
         
         <div class="section">
-            <h3>Connection</h3>
+            <h3>连接设置</h3>
             <input type="text" id="serverUrl" value="ws://localhost:8080" placeholder="WebSocket URL">
-            <button onclick="connect()">Connect</button>
-            <button onclick="disconnect()">Disconnect</button>
-            <div>Status: <span id="status">Disconnected</span></div>
+            <button id="connectBtn" onclick="connect()">连接服务器</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>断开连接</button>
+            <div>
+                状态: <span id="status" class="status status-disconnected">未连接</span>
+                <span id="reconnectTimer" class="reconnect-timer"></span>
+            </div>
+            <div id="connectionError" class="error-message"></div>
         </div>
 
         <div class="section">
-            <h3>Room Management</h3>
-            <input type="text" id="roomName" value="Test Room" placeholder="Room Name">
-            <input type="text" id="roomId" placeholder="Room ID (leave empty to create new)">
-            <button onclick="joinRoom()">Join Room</button>
-            <button onclick="leaveRoom()">Leave Room</button>
+            <h3>房间管理</h3>
+            <input type="text" id="roomName" value="测试房间" placeholder="房间名称">
+            <input type="text" id="roomId" placeholder="房间ID（留空创建新房间）">
+            <button id="joinRoomBtn" onclick="joinRoom()" disabled>加入房间</button>
+            <button id="leaveRoomBtn" onclick="leaveRoom()" disabled>离开房间</button>
+            <div id="roomError" class="error-message"></div>
         </div>
 
         <div class="section">
-            <h3>Participants</h3>
+            <h3>参与者</h3>
             <div id="participants"></div>
         </div>
 
         <div class="section">
-            <h3>WebRTC Test</h3>
-            <input type="text" id="targetClient" placeholder="Target Client ID">
-            <button onclick="createOffer()">Create Offer</button>
-            <button onclick="sendTestMessage()">Send Test Message</button>
+            <h3>WebRTC 测试</h3>
+            <input type="text" id="targetClient" placeholder="目标客户端 ID">
+            <button id="createOfferBtn" onclick="createOffer()" disabled>创建连接请求</button>
+            <button id="sendTestBtn" onclick="sendTestMessage()" disabled>发送测试消息</button>
+            <div id="webrtcError" class="error-message"></div>
         </div>
 
         <div class="section">
-            <h3>Log</h3>
+            <h3>日志</h3>
             <div id="log" class="log"></div>
-            <button onclick="clearLog()">Clear Log</button>
+            <button onclick="clearLog()">清除日志</button>
+            <label><input type="checkbox" id="debugMode" onchange="toggleDebug()" checked> 调试模式</label>
+        </div>
+
+        <div class="section" id="debugSection" style="display: none;">
+            <h3>调试信息</h3>
+            <div id="debug"></div>
         </div>
     </div>
 
@@ -55,128 +146,324 @@
         let clientId = null;
         let currentRoom = null;
         let participants = [];
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 5;
+        let reconnectTimeout = null;
+        let isReconnecting = false;
+        let debugMode = true;
 
-        function log(message) {
+        function toggleDebug() {
+            debugMode = document.getElementById('debugMode').checked;
+            document.getElementById('debugSection').style.display = debugMode ? 'block' : 'none';
+        }
+
+        function debugLog(data, type = 'info') {
+            if (debugMode) {
+                const debugElement = document.getElementById('debug');
+                const timestamp = new Date().toLocaleTimeString();
+                const rawData = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'raw-message';
+                messageDiv.style.color = type === 'error' ? '#f44336' : '#2196F3';
+                messageDiv.innerHTML = `[${timestamp}] ${type}\n${rawData}`;
+                
+                debugElement.insertBefore(messageDiv, debugElement.firstChild);
+                
+                // 限制调试消息数量
+                if (debugElement.children.length > 10) {
+                    debugElement.removeChild(debugElement.lastChild);
+                }
+            }
+        }
+
+        function updateConnectionStatus(status, message = '') {
+            const statusElement = document.getElementById('status');
+            const connectionError = document.getElementById('connectionError');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const joinRoomBtn = document.getElementById('joinRoomBtn');
+            const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+            const createOfferBtn = document.getElementById('createOfferBtn');
+            const sendTestBtn = document.getElementById('sendTestBtn');
+            
+            statusElement.className = 'status status-' + status.toLowerCase();
+            statusElement.textContent = status === 'Connected' ? '已连接' :
+                                      status === 'Disconnected' ? '未连接' :
+                                      status === 'Connecting' ? '连接中' :
+                                      status === 'Error' ? '错误' : status;
+            connectionError.textContent = message;
+            
+            const isConnected = status === 'Connected';
+            connectBtn.disabled = isConnected || isReconnecting;
+            disconnectBtn.disabled = !isConnected;
+            joinRoomBtn.disabled = !isConnected;
+            leaveRoomBtn.disabled = !isConnected || !currentRoom;
+            createOfferBtn.disabled = !isConnected || !currentRoom;
+            sendTestBtn.disabled = !isConnected || !currentRoom;
+        }
+
+        function log(message, isError = false) {
             const logElement = document.getElementById('log');
             const timestamp = new Date().toLocaleTimeString();
-            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            const formattedMessage = `[${timestamp}] ${message}\n`;
+            
+            if (isError) {
+                logElement.innerHTML += `<span style="color: #f44336">${formattedMessage}</span>`;
+            } else {
+                logElement.innerHTML += formattedMessage;
+            }
+            
             logElement.scrollTop = logElement.scrollHeight;
         }
 
+        function startReconnectTimer() {
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                updateConnectionStatus('Error', '重连次数超过限制，请手动重新连接');
+                log('重连次数超过限制，请手动重新连接', true);
+                return;
+            }
+
+            const timerElement = document.getElementById('reconnectTimer');
+            let countdown = 5;
+
+            updateConnectionStatus('Connecting', `尝试重新连接 (${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+            
+            const updateTimer = () => {
+                timerElement.textContent = `将在 ${countdown} 秒后重新连接...`;
+                if (countdown <= 0) {
+                    timerElement.textContent = '';
+                    connect();
+                } else {
+                    countdown--;
+                    setTimeout(updateTimer, 1000);
+                }
+            };
+            
+            updateTimer();
+        }
+
         function connect() {
-            const url = document.getElementById('serverUrl').value;
-            ws = new WebSocket(url, 'webrtc-signaling');
-            
-            ws.onopen = () => {
-                document.getElementById('status').textContent = 'Connected';
-                log('Connected to server');
-            };
-            
-            ws.onclose = () => {
-                document.getElementById('status').textContent = 'Disconnected';
-                log('Disconnected from server');
-            };
-            
-            ws.onerror = (error) => {
-                log('WebSocket error: ' + error);
-            };
-            
-            ws.onmessage = (event) => {
-                const message = JSON.parse(event.data);
-                handleMessage(message);
-            };
+            try {
+                const url = document.getElementById('serverUrl').value;
+                if (!url) {
+                    throw new Error('服务器地址不能为空');
+                }
+
+                if (ws) {
+                    ws.close();
+                }
+
+                updateConnectionStatus('Connecting');
+                log('正在连接到服务器...');
+                
+                ws = new WebSocket(url, 'webrtc-signaling');
+                
+                ws.onopen = () => {
+                    reconnectAttempts = 0;
+                    isReconnecting = false;
+                    if (reconnectTimeout) {
+                        clearTimeout(reconnectTimeout);
+                        reconnectTimeout = null;
+                    }
+                    updateConnectionStatus('Connected');
+                    log('已连接到服务器');
+
+                    const requestClientIdMessage = { action: 'requestClientId' };
+                    ws.send(JSON.stringify(requestClientIdMessage));
+                    debugLog('已发送消息:', requestClientIdMessage);
+                };
+                
+                ws.onclose = (event) => {
+                    updateConnectionStatus('Disconnected');
+                    log(`连接已断开 (代码: ${event.code})`, true);
+                    
+                    if (!event.wasClean && reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        isReconnecting = true;
+                        startReconnectTimer();
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log('WebSocket 错误: ' + error.message, true);
+                    document.getElementById('connectionError').textContent = '连接错误: ' + error.message;
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        // 显式地在控制台打印原始数据
+                        console.log('DEBUG: 收到原始消息 (类型: ' + typeof event.data + ', 长度: ' + event.data.length + '):', event.data);
+                        debugLog('收到原始消息 (类型: ' + typeof event.data + ', 长度: ' + event.data.length + '):', event.data);
+
+                        if (!event.data || typeof event.data !== 'string') {
+                            log('收到空消息或非字符串消息，已忽略。', true);
+                            return;
+                        }
+                        const message = JSON.parse(event.data);
+                        // 显式地在控制台打印解析后的消息
+                        console.log('DEBUG: 解析后的消息:', message);
+                        debugLog('解析后的消息:', message);
+                        handleMessage(message);
+                    } catch (error) {
+                        log('消息解析错误: ' + error.message, true);
+                        debugLog({error: error.message, rawData: event.data}, 'error');
+                    }
+                };
+            } catch (error) {
+                updateConnectionStatus('Error', error.message);
+                log('连接错误: ' + error.message, true);
+            }
         }
 
         function disconnect() {
             if (ws) {
+                isReconnecting = false;
+                if (reconnectTimeout) {
+                    clearTimeout(reconnectTimeout);
+                    reconnectTimeout = null;
+                }
                 ws.close();
                 ws = null;
+                clientId = null;
+                currentRoom = null;
+                participants = [];
+                updateParticipantsList();
+                updateConnectionStatus('Disconnected');
+                log('已断开连接');
             }
         }
 
         function handleMessage(message) {
-            log(`Received: ${message.event}`);
-            
-            switch (message.event) {
-                case 'client-id':
-                    clientId = message.data.clientId;
-                    log(`My client ID: ${clientId}`);
-                    break;
-                    
-                case 'room-created':
-                    currentRoom = message.data.roomId;
-                    log(`Room created: ${currentRoom}`);
-                    break;
-                    
-                case 'participants':
-                    participants = message.data.participants;
-                    updateParticipantsList();
-                    break;
-                    
-                case 'offer':
-                    log(`Offer from ${message.data.fromClientId}`);
-                    handleOffer(message.data);
-                    break;
-                    
-                case 'answer':
-                    log(`Answer from ${message.data.fromClientId}`);
-                    handleAnswer(message.data);
-                    break;
-                    
-                case 'ice-candidate':
-                    log(`ICE candidate from ${message.data.fromClientId}`);
-                    handleIceCandidate(message.data);
-                    break;
-                    
-                case 'error':
-                    log(`Error: ${message.data}`);
-                    break;
+            try {
+                debugLog('收到消息:', message);
+                
+                // 处理 client-id 消息
+                if (message.event === 'client-id' && message.data) {
+                    const clientData = JSON.parse(message.data); // 再次解析 data 字段
+                    clientId = clientData.clientId;
+                    log(`获得客户端 ID: ${clientId}`);
+                    updateConnectionStatus('Connected', `已连接，客户端 ID: ${clientId}`);
+                    // 启用相关按钮
+                    document.getElementById('joinRoomBtn').disabled = false;
+                    document.getElementById('createRoomBtn').disabled = false; // 客户端ID获取后，创建房间按钮也应该可用
+                    return;
+                }
+
+                // 处理房间相关消息
+                if (message.event === 'room-joined' && message.data) {
+                    const roomData = JSON.parse(message.data);
+                    currentRoom = roomData.roomId;
+                    log(`已加入房间: ${currentRoom}`);
+                    updateRoomStatus(`已加入房间: ${currentRoom}`);
+                    // 启用房间相关按钮
+                    document.getElementById('leaveRoomBtn').disabled = false;
+                    document.getElementById('createOfferBtn').disabled = false;
+                    document.getElementById('sendTestBtn').disabled = false;
+                    return;
+                }
+
+                // 处理错误消息
+                if (message.error) {
+                    throw new Error(message.error);
+                }
+
+                // 处理其他类型消息
+                log('收到消息:', message);
+                debugLog('消息内容:', message);
+            } catch (error) {
+                log('消息处理错误: ' + error.message, true);
+                debugLog('错误详情:', error);
+                updateConnectionStatus('Error', '消息处理错误: ' + error.message);
+            }
+        }
+
+        function updateConnectionStatus(status) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (statusElement) {
+                statusElement.textContent = status;
+            }
+        }
+
+        function updateRoomStatus(status) {
+            const statusElement = document.getElementById('roomStatus');
+            if (statusElement) {
+                statusElement.textContent = status;
             }
         }
 
         function joinRoom() {
             if (!ws) {
-                log('Not connected to server');
+                log('未连接到服务器', true);
                 return;
             }
             
-            const roomName = document.getElementById('roomName').value;
-            const roomId = document.getElementById('roomId').value;
-            
-            const message = {
-                event: 'join-room',
-                data: {
-                    roomName: roomName,
-                    roomId: roomId || null
+            try {
+                const roomName = document.getElementById('roomName').value;
+                const roomId = document.getElementById('roomId').value;
+                
+                if (!roomName.trim()) {
+                    throw new Error('房间名称不能为空');
                 }
-            };
-            
-            ws.send(JSON.stringify(message));
-            log('Joining room...');
+                
+                const message = {
+                    event: 'join-room',
+                    data: {
+                        roomName: roomName,
+                        roomId: roomId || null
+                    }
+                };
+                
+                debugLog(message, 'sending');  // 显示发送的消息
+                ws.send(JSON.stringify(message));
+                log('正在加入房间...');
+                document.getElementById('roomError').textContent = '';
+            } catch (error) {
+                log('加入房间失败: ' + error.message, true);
+                document.getElementById('roomError').textContent = error.message;
+            }
         }
 
         function leaveRoom() {
-            if (!ws || !currentRoom) return;
+            if (!ws || !currentRoom) {
+                log('未在房间中', true);
+                return;
+            }
             
-            const message = {
-                event: 'leave-room',
-                data: {}
-            };
-            
-            ws.send(JSON.stringify(message));
-            currentRoom = null;
-            participants = [];
-            updateParticipantsList();
-            log('Left room');
+            try {
+                const message = {
+                    event: 'leave-room',
+                    data: {}
+                };
+                
+                debugLog(message, 'sending');  // 显示发送的消息
+                ws.send(JSON.stringify(message));
+                currentRoom = null;
+                participants = [];
+                updateParticipantsList();
+                log('已离开房间');
+                document.getElementById('leaveRoomBtn').disabled = true;
+                document.getElementById('createOfferBtn').disabled = true;
+                document.getElementById('sendTestBtn').disabled = true;
+                document.getElementById('roomError').textContent = '';
+            } catch (error) {
+                log('离开房间失败: ' + error.message, true);
+                document.getElementById('roomError').textContent = error.message;
+            }
         }
 
         function updateParticipantsList() {
             const list = document.getElementById('participants');
             list.innerHTML = '';
             
+            if (participants.length === 0) {
+                list.innerHTML = '<div style="color: #666;">没有其他参与者</div>';
+                return;
+            }
+            
             participants.forEach(participantId => {
                 const div = document.createElement('div');
-                div.textContent = participantId + (participantId === clientId ? ' (You)' : '');
+                div.textContent = participantId + (participantId === clientId ? ' (你)' : '');
                 list.appendChild(div);
             });
         }
@@ -184,59 +471,92 @@
         function createOffer() {
             const targetClient = document.getElementById('targetClient').value;
             if (!targetClient) {
-                log('Please enter target client ID');
+                document.getElementById('webrtcError').textContent = '请输入目标客户端 ID';
                 return;
             }
             
-            const message = {
-                event: 'offer',
-                data: {
-                    targetClientId: targetClient,
-                    offer: { type: 'offer', sdp: 'test-sdp-' + Date.now() }
-                }
-            };
-            
-            ws.send(JSON.stringify(message));
-            log(`Sent offer to ${targetClient}`);
+            try {
+                const message = {
+                    event: 'offer',
+                    data: {
+                        targetClientId: targetClient,
+                        offer: { type: 'offer', sdp: 'test-sdp-' + Date.now() }
+                    }
+                };
+                
+                debugLog(message, 'sending');  // 显示发送的消息
+                ws.send(JSON.stringify(message));
+                log(`已发送 Offer 到 ${targetClient}`);
+                document.getElementById('webrtcError').textContent = '';
+            } catch (error) {
+                log('发送 Offer 失败: ' + error.message, true);
+                document.getElementById('webrtcError').textContent = error.message;
+            }
         }
 
         function sendTestMessage() {
             const targetClient = document.getElementById('targetClient').value;
             if (!targetClient) {
-                log('Please enter target client ID');
+                document.getElementById('webrtcError').textContent = '请输入目标客户端 ID';
                 return;
             }
             
-            const message = {
-                event: 'ice-candidate',
-                data: {
-                    targetClientId: targetClient,
-                    candidate: { candidate: 'test-candidate', sdpMid: '0', sdpMLineIndex: 0 }
-                }
-            };
-            
-            ws.send(JSON.stringify(message));
-            log(`Sent test message to ${targetClient}`);
+            try {
+                const message = {
+                    event: 'ice-candidate',
+                    data: {
+                        targetClientId: targetClient,
+                        candidate: { candidate: 'test-candidate', sdpMid: '0', sdpMLineIndex: 0 }
+                    }
+                };
+                
+                debugLog(message, 'sending');  // 显示发送的消息
+                ws.send(JSON.stringify(message));
+                log(`已发送测试消息到 ${targetClient}`);
+                document.getElementById('webrtcError').textContent = '';
+            } catch (error) {
+                log('发送测试消息失败: ' + error.message, true);
+                document.getElementById('webrtcError').textContent = error.message;
+            }
         }
 
         function handleOffer(data) {
-            // In real implementation, you'd create and send an answer
-            log(`Would create answer for offer from ${data.fromClientId}`);
+            try {
+                // 在实际实现中，你需要创建并发送 answer
+                log(`将为来自 ${data.fromClientId} 的 offer 创建 answer`);
+            } catch (error) {
+                log('处理 Offer 失败: ' + error.message, true);
+                document.getElementById('webrtcError').textContent = error.message;
+            }
         }
 
         function handleAnswer(data) {
-            // In real implementation, you'd set the remote description
-            log(`Would set remote description from ${data.fromClientId}`);
+            try {
+                // 在实际实现中，你需要设置远程描述
+                log(`将设置来自 ${data.fromClientId} 的远程描述`);
+            } catch (error) {
+                log('处理 Answer 失败: ' + error.message, true);
+                document.getElementById('webrtcError').textContent = error.message;
+            }
         }
 
         function handleIceCandidate(data) {
-            // In real implementation, you'd add the ICE candidate
-            log(`Would add ICE candidate from ${data.fromClientId}`);
+            try {
+                // 在实际实现中，你需要添加 ICE candidate
+                log(`将添加来自 ${data.fromClientId} 的 ICE candidate`);
+            } catch (error) {
+                log('处理 ICE Candidate 失败: ' + error.message, true);
+                document.getElementById('webrtcError').textContent = error.message;
+            }
         }
 
         function clearLog() {
             document.getElementById('log').innerHTML = '';
+            document.getElementById('debug').innerHTML = '';
         }
+
+        // 初始化调试模式
+        toggleDebug();
     </script>
 </body>
 </html>
